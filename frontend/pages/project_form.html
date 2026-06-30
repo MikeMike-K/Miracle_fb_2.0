@@ -1,0 +1,260 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="../assets/logo.svg" type="image/svg+xml">
+<title>Проект | Miracle_2.0</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="../css/style.css" rel="stylesheet">
+</head>
+<body>
+<div id="navbar"></div>
+<div class="container form-page pb-4" style="max-width:960px;">
+  <div id="backBar" style="display:none"><a id="returnToLink" class="btn btn-sm btn-outline-secondary mb-3">&larr; Назад</a></div>
+  <h1 id="pageTitle" class="page-title mb-4">Новый проект</h1>
+
+  <div class="card p-4 mb-4 form-card">
+    <form id="projectForm">
+      <div class="row g-3">
+        <div class="col-md-6"><label class="form-label">Название</label><input class="form-control" name="name" required></div>
+        <div class="col-md-3"><label class="form-label">Тип проекта</label><select class="form-select" name="project_type"></select></div>
+        <div class="col-md-3"><label class="form-label">Статус</label><select class="form-select" name="status"></select></div>
+        <div class="col-md-3"><label class="form-label">Планируемая дата завершения</label><input type="date" class="form-control" name="end_date"></div>
+        <div class="col-md-3"><label class="form-label">Площадь (м²)</label><input class="form-control" name="area"></div>
+        <div class="col-md-6"><label class="form-label">Адрес <span class="text-danger">*</span></label><input class="form-control" name="address" required></div>
+        <div class="col-md-6"><label class="form-label">Регион <span class="text-danger">*</span></label><select class="form-select" name="region" required></select></div>
+        <div class="col-md-4">
+          <label class="form-label">Бюджет (без НДС)</label>
+          <div class="input-group">
+            <input class="form-control" name="budget" inputmode="decimal">
+            <select class="form-select" name="currency" style="max-width:7rem"></select>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Сумма КП (без НДС)</label>
+          <div class="input-group">
+            <input class="form-control" name="cp_amount" inputmode="decimal">
+            <span class="input-group-text" id="cpCurrencyLabel">₽</span>
+          </div>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary mt-3" id="submitBtn">Сохранить</button>
+      <button type="button" class="btn btn-outline-secondary mt-3" id="editBtn" style="display:none">Редактировать</button>
+    </form>
+  </div>
+
+  <div id="companiesBlock" class="card p-4 mb-4" style="display:none">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <h5 class="mb-0">Компании проекта</h5>
+      <div class="d-flex gap-2">
+        <a id="addCompanyLink" class="btn btn-sm btn-outline-primary">+ Из списка</a>
+        <a id="createCompanyLink" class="btn btn-sm btn-orange">+ Создать компанию</a>
+      </div>
+    </div>
+    <div class="input-group input-group-sm mt-3">
+      <span class="input-group-text"><i class="bi bi-search"></i></span>
+      <input type="search" class="form-control" id="companiesSearch" placeholder="Поиск компаний..." autocomplete="off">
+    </div>
+    <small id="companiesSearchCount" class="text-muted list-search-count d-block mt-1"></small>
+    <div id="companiesList" class="mt-2"></div>
+  </div>
+
+  <div id="eventsBlock" class="card p-4" style="display:none">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <h5 class="mb-0">Мероприятия</h5>
+      <button type="button" class="btn btn-sm btn-orange" id="toggleEventFormBtn">+ Новое мероприятие</button>
+    </div>
+    <div class="input-group input-group-sm mt-3">
+      <span class="input-group-text"><i class="bi bi-search"></i></span>
+      <input type="search" class="form-control" id="eventsSearch" placeholder="Поиск мероприятий..." autocomplete="off">
+    </div>
+    <small id="eventsSearchCount" class="text-muted list-search-count d-block mt-1"></small>
+    <div class="mt-3 d-none" id="newEventForm">
+      <form id="eventForm" class="row g-2">
+        <div class="col-md-4">
+          <select class="form-select" name="event_type" required></select>
+        </div>
+        <div class="col-md-3"><input type="date" class="form-control" name="planned_date" required></div>
+        <div class="col-md-3" id="responsibleSelectWrap"><select class="form-select" name="responsible_user"></select></div>
+        <div class="col-md-2"><button class="btn btn-primary w-100" type="submit">Создать</button></div>
+        <div class="col-12"><textarea class="form-control" name="description" placeholder="Описание" rows="2"></textarea></div>
+      </form>
+    </div>
+    <div id="eventsList" class="mt-3"></div>
+  </div>
+</div>
+
+<script src="../js/config.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/navbar.js"></script>
+<script src="../js/form_options.js"></script>
+<script src="../js/events_ui.js"></script>
+<script src="../js/list_search.js"></script>
+<script>
+const params = new URLSearchParams(location.search);
+const projectId = params.get('id');
+const returnTo = params.get('return_to');
+let me;
+let projectPageData = { companies: [], events: { planned: [], completed: [], cancelled: [] } };
+let refreshCompaniesSearch = () => {};
+let refreshEventsSearch = () => {};
+
+function selfPageUrl() {
+  const base = `project_form.html?id=${projectId}`;
+  return returnTo ? `${base}&return_to=${encodeURIComponent(returnTo)}` : base;
+}
+
+function cancelEvent(eventId) {
+  if (!confirm('Отменить мероприятие?')) return;
+  runEventAction(() => api.projectEventCancel(projectId, eventId));
+}
+async function runEventAction(fn) {
+  try { await fn(); showToast('Готово'); loadProject(); } catch (e) { showToast(e.message, 'error'); }
+}
+async function unlinkCompany(companyId) {
+  try { await api.projectUnlinkCompany(projectId, companyId); showToast('Компания удалена из проекта'); loadProject(); }
+  catch (e) { showToast(e.message, 'error'); }
+}
+
+async function loadProject() {
+  const data = await api.projectGet(projectId);
+  const p = data.project;
+  const f = document.getElementById('projectForm');
+  f.name.value = p.name || '';
+  setFormSelect(f, 'project_type', FORM_OPTIONS.projectTypes, 'Выберите тип проекта...', p.project_type);
+  setFormSelect(f, 'status', FORM_OPTIONS.projectStatuses, 'Выберите статус...', p.status);
+  setFormSelect(f, 'region', FORM_OPTIONS.regions, 'Выберите регион...', p.region);
+  initCurrencySelect(f.currency, p.currency || 'RUB');
+  document.getElementById('cpCurrencyLabel').textContent = currencySymbol(p.currency || 'RUB');
+  for (const key of ['end_date', 'area', 'address', 'budget', 'cp_amount']) {
+    if (f[key]) f[key].value = p[key] || '';
+  }
+  document.getElementById('pageTitle').textContent = p.name;
+  document.getElementById('submitBtn').style.display = 'none';
+  document.getElementById('editBtn').style.display = 'inline-block';
+  setFormReadonly(true);
+
+  document.getElementById('companiesBlock').style.display = 'block';
+  document.getElementById('addCompanyLink').href = `select_company_for_project.html?project_id=${projectId}`;
+  document.getElementById('createCompanyLink').href = `company_form.html?project_id=${projectId}`;
+  projectPageData.companies = data.companies;
+  projectPageData.events = {
+    planned: data.planned_events,
+    completed: data.completed_events,
+    cancelled: data.cancelled_events,
+  };
+  refreshCompaniesSearch();
+  document.getElementById('eventsBlock').style.display = 'block';
+  refreshEventsSearch();
+}
+
+function renderCompanies(list) {
+  const el = document.getElementById('companiesList');
+  if (!list.length) {
+    el.innerHTML = `<p class="text-muted small">${projectPageData.companies.length ? 'Ничего не найдено' : 'Нет компаний'}</p>`;
+    return;
+  }
+  el.innerHTML = list.map(c => `
+    <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+      <a href="company_form.html?id=${c.id}&return_to=${encodeURIComponent(selfPageUrl())}">${escapeHtml(c.name)}</a>
+      <span class="text-muted small">${escapeHtml(c.type||'')}</span>
+      <button class="btn btn-sm btn-outline-danger" onclick="unlinkCompany(${c.id})">Удалить</button>
+    </div>`).join('');
+}
+
+function setFormReadonly(readonly) {
+  const f = document.getElementById('projectForm');
+  [...f.elements].forEach(el => { if (el.tagName !== 'BUTTON') el.disabled = readonly; });
+}
+
+(async () => {
+  me = await requireAuth(); if (!me) return;
+  renderNavbar('projects', me);
+  if (returnTo) {
+    document.getElementById('backBar').style.display = 'block';
+    document.getElementById('returnToLink').href = returnTo;
+  }
+
+  const projectForm = document.getElementById('projectForm');
+  setFormSelect(projectForm, 'project_type', FORM_OPTIONS.projectTypes, 'Выберите тип проекта...', '');
+  setFormSelect(projectForm, 'status', FORM_OPTIONS.projectStatuses, 'Выберите статус...', '');
+  setFormSelect(projectForm, 'region', FORM_OPTIONS.regions, 'Выберите регион...', '');
+  initCurrencySelect(projectForm.currency, 'RUB');
+  document.getElementById('cpCurrencyLabel').textContent = currencySymbol('RUB');
+  projectForm.currency.addEventListener('change', (e) => {
+    document.getElementById('cpCurrencyLabel').textContent = currencySymbol(e.target.value);
+  });
+  initEventTypeSelect(document.querySelector('#eventForm select[name="event_type"]'));
+  initEventFormToggle();
+
+  if (projectId) {
+    refreshCompaniesSearch = setupListSearch({
+      inputId: 'companiesSearch',
+      countId: 'companiesSearchCount',
+      getItems: () => projectPageData.companies,
+      render: renderCompanies,
+      searchText: (c) => [c.name, c.type, c.activity, c.country].join(' '),
+    });
+    refreshEventsSearch = setupEventsSearch({
+      inputId: 'eventsSearch',
+      countId: 'eventsSearchCount',
+      listId: 'eventsList',
+      getEvents: () => projectPageData.events,
+      baseUrl: `view_event.html?ctx=project&parent_id=${projectId}`,
+      ctx: 'project',
+      parentId: projectId,
+    });
+    await loadProject();
+    document.getElementById('editBtn').addEventListener('click', () => {
+      setFormReadonly(false);
+      document.getElementById('submitBtn').style.display = 'inline-block';
+      document.getElementById('editBtn').style.display = 'none';
+    });
+    document.getElementById('projectForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = Object.fromEntries(new FormData(e.target));
+      try { await api.projectEdit(projectId, fd); showToast('Проект обновлен!'); loadProject(); }
+      catch (err) { showToast(err.message, 'error'); }
+    });
+
+    if (me.role !== 'manager') {
+      try {
+        const users = await api.usersList();
+        document.querySelector('select[name="responsible_user"]').innerHTML =
+          users.map(u => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join('');
+      } catch (err) {
+        document.getElementById('responsibleSelectWrap').style.display = 'none';
+      }
+    } else {
+      document.getElementById('responsibleSelectWrap').style.display = 'none';
+    }
+
+    document.getElementById('eventForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = Object.fromEntries(new FormData(e.target));
+      try {
+        await api.projectEventAdd(projectId, fd);
+        showToast('Мероприятие создано!');
+        e.target.reset();
+        initEventTypeSelect(document.querySelector('#eventForm select[name="event_type"]'));
+        await loadProject();
+      } catch (err) { showToast(err.message, 'error'); }
+    });
+  } else {
+    document.getElementById('projectForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = Object.fromEntries(new FormData(e.target));
+      try {
+        const r = await api.projectCreate(fd);
+        showToast('Сохранено!');
+        window.location.href = `project_form.html?id=${r.id}`;
+      } catch (err) { showToast(err.message, 'error'); }
+    });
+  }
+})();
+</script>
+</body>
+</html>

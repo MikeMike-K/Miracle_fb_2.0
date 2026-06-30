@@ -1,0 +1,385 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="../assets/logo.svg" type="image/svg+xml">
+<title>Настройки отчётов | Miracle_2.0</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="../css/style.css" rel="stylesheet">
+</head>
+<body>
+<div id="navbar"></div>
+<div class="container" style="max-width:800px;">
+  <a href="admin.html" class="btn btn-sm btn-outline-secondary mb-3">&larr; Назад в админ-панель</a>
+  <h2 class="mb-4">Настройки автоматических отчётов</h2>
+
+  <div class="card p-4 mb-4" id="schedulerCard">
+    <h5>Планировщик отчётов</h5>
+    <div id="schedulerJobs" class="small text-muted mt-2">Загрузка...</div>
+  </div>
+
+  <div class="card p-4 mb-4 border-warning" id="demoCheckCard">
+    <h5>Проверка отчётов</h5>
+    <p class="text-muted small mb-3">
+      Создаёт тестовые мероприятия с пометкой <code>[DEMO]</code> (по 6 выполненных одного типа на менеджера,
+      с описаниями для таблицы детализации). Реальные записи не затрагиваются.
+      Командная строка: <code>python preview_reports.py seed</code>
+    </p>
+    <button type="button" id="demoSeedBtn" class="btn btn-outline-warning">Создать тестовые мероприятия</button>
+    <button type="button" id="demoSeedPreviewWeeklyBtn" class="btn btn-outline-primary ms-2">Тестовые данные + предпросмотр (неделя)</button>
+  </div>
+
+  <div class="card p-4 mb-4" id="smtpCard">
+    <h5>SMTP отправители (ввод паролей вручную)</h5>
+    <form id="smtpForm" class="row g-2 mt-1">
+      <div class="col-12">
+        <label class="form-label">Mikele208ID@yandex.ru</label>
+        <input type="password" class="form-control" name="yandex" placeholder="Пароль приложения Yandex">
+      </div>
+      <div class="col-12">
+        <label class="form-label">mikemike_000@mail.ru</label>
+        <input type="password" class="form-control" name="mailru" placeholder="Пароль приложения Mail.ru">
+      </div>
+      <div class="col-12">
+        <label class="form-label">mkachin9@gmail.com</label>
+        <input type="password" class="form-control" name="gmail" placeholder="Пароль приложения Gmail">
+      </div>
+      <div class="col-12 mt-2">
+        <button class="btn btn-primary">Сохранить SMTP пароли</button>
+        <button type="button" id="smtpSaveAndCheckBtn" class="btn btn-outline-primary">Сохранить и проверить</button>
+        <button type="button" id="smtpCheckBtn" class="btn btn-outline-secondary">Проверить SMTP</button>
+        <button type="button" id="selfCheckBtn" class="btn btn-outline-dark">Self-check системы</button>
+      </div>
+      <div class="col-12">
+        <small id="smtpStatus" class="text-muted"></small>
+      </div>
+      <div class="col-12">
+        <div id="smtpDiagnostics" class="small text-muted border rounded p-2" style="white-space:pre-wrap;min-height:48px;">
+          Диагностика SMTP появится здесь.
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div class="card p-4 mb-4">
+    <h5>Еженедельный отчет</h5>
+    <form class="report-form row g-2 mt-1" data-type="weekly">
+      <input type="hidden" name="report_type" value="weekly">
+      <div class="col-md-4">
+        <label class="form-label">День недели (0=Пн)</label>
+        <select class="form-select" name="day_value">
+          <option value="0">Понедельник</option><option value="1">Вторник</option><option value="2">Среда</option>
+          <option value="3">Четверг</option><option value="4">Пятница</option><option value="5">Суббота</option><option value="6">Воскресенье</option>
+        </select>
+      </div>
+      <div class="col-md-4"><label class="form-label">Время</label><input type="time" class="form-control" name="time_value"></div>
+      <div class="col-12">
+        <label class="form-label">Получатели</label>
+        <input type="search" class="form-control form-control-sm mb-2 recipient-search" placeholder="Поиск получателя..." autocomplete="off">
+        <div class="recipients-list border rounded p-2" data-target="weekly"></div>
+      </div>
+      <div class="col-12 mt-2">
+        <button class="btn btn-primary">Сохранить</button>
+        <button type="button" class="btn btn-outline-primary preview-btn" data-kind="weekly">Предпросмотр в браузере</button>
+        <button type="button" class="btn btn-outline-secondary test-btn" data-kind="weekly">Отправить на почту</button>
+        <button type="button" class="btn btn-outline-warning demo-send-btn" data-kind="weekly">Тестовые данные + на почту</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card p-4 mb-4">
+    <h5>Ежемесячный отчет</h5>
+    <form class="report-form row g-2 mt-1" data-type="monthly">
+      <input type="hidden" name="report_type" value="monthly">
+      <div class="col-md-4"><label class="form-label">День месяца</label><input type="number" min="1" max="28" class="form-control" name="day_value"></div>
+      <div class="col-md-4"><label class="form-label">Время</label><input type="time" class="form-control" name="time_value"></div>
+      <div class="col-12">
+        <label class="form-label">Получатели</label>
+        <input type="search" class="form-control form-control-sm mb-2 recipient-search" placeholder="Поиск получателя..." autocomplete="off">
+        <div class="recipients-list border rounded p-2" data-target="monthly"></div>
+      </div>
+      <div class="col-12 mt-2">
+        <button class="btn btn-primary">Сохранить</button>
+        <button type="button" class="btn btn-outline-primary preview-btn" data-kind="monthly">Предпросмотр в браузере</button>
+        <button type="button" class="btn btn-outline-secondary test-btn" data-kind="monthly">Отправить на почту</button>
+        <button type="button" class="btn btn-outline-warning demo-send-btn" data-kind="monthly">Тестовые данные + на почту</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card p-4 mb-4">
+    <h5>Ежедневный план</h5>
+    <form class="report-form row g-2 mt-1" data-type="daily">
+      <input type="hidden" name="report_type" value="daily">
+      <div class="col-md-4"><label class="form-label">Время</label><input type="time" class="form-control" name="time_value"></div>
+      <div class="col-12">
+        <label class="form-label">Получатели</label>
+        <input type="search" class="form-control form-control-sm mb-2 recipient-search" placeholder="Поиск получателя..." autocomplete="off">
+        <div class="recipients-list border rounded p-2" data-target="daily"></div>
+      </div>
+      <div class="col-12 mt-2">
+        <button class="btn btn-primary">Сохранить</button>
+        <button type="button" class="btn btn-outline-primary preview-btn" data-kind="daily">Предпросмотр в браузере</button>
+        <button type="button" class="btn btn-outline-secondary test-btn" data-kind="daily">Отправить на почту</button>
+        <button type="button" class="btn btn-outline-warning demo-send-btn" data-kind="daily">Тестовые данные + на почту</button>
+      </div>
+    </form>
+  </div>
+</div>
+<script src="../js/config.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/navbar.js"></script>
+<script src="../js/list_search.js"></script>
+<script>
+function renderRecipients(container, users, selected) {
+  container.innerHTML = users.map(u => `
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" name="recipients" value="${u.id}" id="r-${container.dataset.target}-${u.id}" ${selected.includes(String(u.id)) ? 'checked' : ''}>
+      <label class="form-check-label" for="r-${container.dataset.target}-${u.id}">${escapeHtml(u.first_name)} ${escapeHtml(u.last_name)} (${escapeHtml(u.email)})</label>
+    </div>`).join('');
+}
+
+function renderSchedulerJobs(jobs) {
+  const el = document.getElementById('schedulerJobs');
+  const fmt = (iso) => {
+    if (!iso) return 'не запланирован';
+    try { return new Date(iso).toLocaleString('ru-RU'); } catch { return iso; }
+  };
+  if (!jobs || !jobs.length) {
+    el.innerHTML = '<span class="text-warning">Задачи планировщика не зарегистрированы</span>';
+    return;
+  }
+  el.innerHTML = jobs.map(j => `
+    <div class="border-bottom py-2">
+      <strong>${escapeHtml(j.id || 'job')}</strong>
+      <span class="text-muted"> — следующий запуск: ${escapeHtml(fmt(j.next_run))}</span>
+    </div>`).join('');
+}
+
+function renderSmtpStatus(accounts) {
+  const statusEl = document.getElementById('smtpStatus');
+  const parts = accounts.map(a => `${a.email}: ${a.configured ? 'настроен' : 'не задан'}`);
+  statusEl.textContent = `Состояние: ${parts.join(' | ')}`;
+}
+
+function renderSmtpDiagnostics(result) {
+  const el = document.getElementById('smtpDiagnostics');
+  const checks = (result && result.checks) || [];
+  if (!checks.length) {
+    el.textContent = 'Нет данных диагностики.';
+    return;
+  }
+  el.textContent = checks
+    .map(c => `${c.ok ? 'OK' : 'ERROR'}  ${c.email}\n${c.message}`)
+    .join('\n\n');
+}
+
+function getSmtpPasswords(form) {
+  const fd = new FormData(form);
+  return {
+    yandex: (fd.get('yandex') || '').trim(),
+    mailru: (fd.get('mailru') || '').trim(),
+    gmail: (fd.get('gmail') || '').trim(),
+  };
+}
+
+async function runSmtpCheck() {
+  const r = await api.adminSmtpCheck();
+  renderSmtpDiagnostics(r);
+  const report = (r.checks || [])
+    .map(c => `${c.email}: ${c.ok ? 'OK' : 'ERROR'}`)
+    .join(' | ');
+  showToast(report || r.message, r.success ? 'success' : 'error');
+}
+
+(async () => {
+  const me = await requireAuth(); if (!me) return;
+  if (!['admin','local_admin'].includes(me.role)) { showToast('Нет прав', 'error'); window.location.href = 'main.html'; return; }
+  renderNavbar('admin', me);
+  const isFullAdmin = me.role === 'admin';
+  if (!isFullAdmin) {
+    document.getElementById('demoCheckCard').style.display = 'none';
+    document.getElementById('smtpCard').style.display = 'none';
+    document.querySelectorAll('.test-btn, .demo-send-btn, .preview-btn').forEach(btn => btn.style.display = 'none');
+  }
+
+  async function openReportPreview(kind) {
+    try {
+      const html = await api.adminReportsPreview(kind);
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      window.open(URL.createObjectURL(blob), '_blank');
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  function getReportRecipients(form) {
+    const fd = new FormData(form);
+    return fd.getAll('recipients');
+  }
+
+  document.getElementById('demoSeedBtn').addEventListener('click', async () => {
+    try {
+      const r = await api.adminReportsDemoSeed();
+      showToast(r.message, 'success');
+    } catch (err) { showToast(err.message, 'error'); }
+  });
+
+  document.getElementById('demoSeedPreviewWeeklyBtn').addEventListener('click', async () => {
+    try {
+      const r = await api.adminReportsDemoSeed();
+      showToast(r.message, 'success');
+      await openReportPreview('weekly');
+    } catch (err) { showToast(err.message, 'error'); }
+  });
+
+  document.querySelectorAll('.preview-btn').forEach(btn => {
+    btn.addEventListener('click', () => openReportPreview(btn.dataset.kind));
+  });
+
+  document.querySelectorAll('.demo-send-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const form = btn.closest('form');
+      const recipients = getReportRecipients(form);
+      if (!recipients.length) {
+        showToast('Выберите хотя бы одного получателя с email', 'error');
+        return;
+      }
+      try {
+        await api.adminReportsSave({
+          report_type: new FormData(form).get('report_type'),
+          day_value: new FormData(form).get('day_value'),
+          time_value: new FormData(form).get('time_value'),
+          recipients,
+        });
+        const r = await api.adminReportsDemoSend(btn.dataset.kind, { seed: true, recipients });
+        showToast(r.message, 'success');
+      } catch (err) { showToast(err.message, 'error'); }
+    });
+  });
+
+  try {
+    const data = await api.adminReportsGet();
+    if (data.scheduler_jobs) renderSchedulerJobs(data.scheduler_jobs);
+    document.querySelectorAll('.recipients-list').forEach(el => {
+      const sel = data[el.dataset.target].recipients;
+      renderRecipients(el, data.users, sel);
+    });
+    document.querySelectorAll('.recipient-search').forEach((input) => {
+      const list = input.nextElementSibling;
+      input.addEventListener('input', () => filterRecipientRows(list, input.value));
+    });
+    document.querySelector('form[data-type="weekly"] select[name="day_value"]').value = data.weekly.day;
+    document.querySelector('form[data-type="weekly"] input[name="time_value"]').value = data.weekly.time;
+    document.querySelector('form[data-type="monthly"] input[name="day_value"]').value = data.monthly.day;
+    document.querySelector('form[data-type="monthly"] input[name="time_value"]').value = data.monthly.time;
+    document.querySelector('form[data-type="daily"] input[name="time_value"]').value = data.daily.time;
+    if (data.smtp_accounts) renderSmtpStatus(data.smtp_accounts);
+  } catch (e) { showToast(e.message, 'error'); }
+
+  document.getElementById('smtpForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const passwords = getSmtpPasswords(e.target);
+    const hasAny = Object.values(passwords).some(Boolean);
+    if (!hasAny) {
+      showToast('Введите хотя бы один SMTP пароль', 'error');
+      return;
+    }
+    try {
+      const r = await api.adminSmtpPasswordsSave(passwords);
+      showToast(r.message);
+      const data = await api.adminReportsGet();
+      if (data.smtp_accounts) renderSmtpStatus(data.smtp_accounts);
+      e.target.reset();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+
+  document.getElementById('smtpSaveAndCheckBtn').addEventListener('click', async () => {
+    const form = document.getElementById('smtpForm');
+    const passwords = getSmtpPasswords(form);
+    const hasAny = Object.values(passwords).some(Boolean);
+    if (!hasAny) {
+      showToast('Введите хотя бы один SMTP пароль', 'error');
+      return;
+    }
+    try {
+      const r = await api.adminSmtpPasswordsSave(passwords);
+      showToast(r.message);
+      form.reset();
+      await runSmtpCheck();
+      const data = await api.adminReportsGet();
+      if (data.smtp_accounts) renderSmtpStatus(data.smtp_accounts);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+
+  document.getElementById('smtpCheckBtn').addEventListener('click', async () => {
+    try {
+      await runSmtpCheck();
+      const data = await api.adminReportsGet();
+      if (data.smtp_accounts) renderSmtpStatus(data.smtp_accounts);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+
+  document.getElementById('selfCheckBtn').addEventListener('click', async () => {
+    try {
+      const r = await api.adminSelfCheck();
+      const smtpOk = (r.smtp || []).filter(x => x.ok).length;
+      const jobs = (r.scheduler_jobs || []).map(j => j.id).join(', ') || 'нет';
+      const reports = r.report_state || {};
+      const msg = `SMTP OK: ${smtpOk}; Jobs: ${jobs}; Config: W=${reports.weekly_configured}, M=${reports.monthly_configured}, D=${reports.daily_configured}`;
+      showToast(msg, r.success ? 'success' : 'error');
+      renderSmtpDiagnostics({ checks: r.smtp || [] });
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+
+  document.querySelectorAll('.report-form').forEach(form => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      const payload = {
+        report_type: fd.get('report_type'),
+        day_value: fd.get('day_value'),
+        time_value: fd.get('time_value'),
+        recipients: fd.getAll('recipients'),
+      };
+      try { const r = await api.adminReportsSave(payload); showToast(r.message); }
+      catch (err) { showToast(err.message, 'error'); }
+    });
+  });
+
+  document.querySelectorAll('.test-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const form = btn.closest('form');
+      const recipients = getReportRecipients(form);
+      if (!recipients.length) {
+        showToast('Выберите хотя бы одного получателя с email', 'error');
+        return;
+      }
+      const fd = new FormData(form);
+      const payload = {
+        report_type: fd.get('report_type'),
+        day_value: fd.get('day_value'),
+        time_value: fd.get('time_value'),
+        recipients,
+      };
+      try {
+        await api.adminReportsSave(payload);
+        const r = await api.adminReportsTest(btn.dataset.kind, { recipients });
+        showToast(r.message);
+      } catch (err) { showToast(err.message, 'error'); }
+    });
+  });
+})();
+</script>
+</body>
+</html>
