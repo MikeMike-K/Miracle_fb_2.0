@@ -80,6 +80,8 @@ app.config['SESSION_COOKIE_SECURE'] = _session_secure
 
 # Определяем, где запущен код: на Railway (PostgreSQL) или локально (SQLite)
 DATABASE_URL = os.environ.get('DATABASE_URL')
+if DATABASE_URL and DATABASE_URL.startswith('postgres://'):
+    DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
 
 if DATABASE_URL:
     import psycopg2
@@ -152,9 +154,10 @@ if os.environ.get('RENDER') is None and 'pythonanywhere' not in os.environ.get('
 def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
+    pk = 'SERIAL PRIMARY KEY' if DB_TYPE == 'postgresql' else 'INTEGER PRIMARY KEY'
 
-    cursor.execute('''CREATE TABLE IF NOT EXISTS users 
-                      (id INTEGER PRIMARY KEY, username TEXT UNIQUE, password TEXT, role TEXT,
+    cursor.execute(f'''CREATE TABLE IF NOT EXISTS users 
+                      (id {pk}, username TEXT UNIQUE, password TEXT, role TEXT,
                        first_name TEXT, last_name TEXT, patronymic TEXT, email TEXT)''')
     cursor.execute("SELECT * FROM users WHERE username = ?", (DEFAULT_ADMIN_LOGIN,))
     if not cursor.fetchone():
@@ -163,38 +166,38 @@ def init_db():
                        (DEFAULT_ADMIN_LOGIN, generate_password_hash(DEFAULT_ADMIN_PASSWORD), 'admin',
                         'Главный', 'Администратор', '', 'admin@miracle.local'))
 
-    cursor.execute('''CREATE TABLE IF NOT EXISTS clients 
-                      (id INTEGER PRIMARY KEY, last_name TEXT, first_name TEXT, patronymic TEXT, 
+    cursor.execute(f'''CREATE TABLE IF NOT EXISTS clients 
+                      (id {pk}, last_name TEXT, first_name TEXT, patronymic TEXT, 
                        dob TEXT, description TEXT, phone TEXT, email TEXT, position TEXT)''')
 
-    cursor.execute('''CREATE TABLE IF NOT EXISTS companies 
-                      (id INTEGER PRIMARY KEY, name TEXT, country TEXT, activity TEXT, 
+    cursor.execute(f'''CREATE TABLE IF NOT EXISTS companies 
+                      (id {pk}, name TEXT, country TEXT, activity TEXT, 
                        type TEXT, website TEXT, description TEXT)''')
 
-    cursor.execute('''CREATE TABLE IF NOT EXISTS company_employees 
-                      (id INTEGER PRIMARY KEY, company_id INTEGER, client_id INTEGER, status TEXT DEFAULT 'РАБОТАЕТ',
+    cursor.execute(f'''CREATE TABLE IF NOT EXISTS company_employees 
+                      (id {pk}, company_id INTEGER, client_id INTEGER, status TEXT DEFAULT 'РАБОТАЕТ',
                        FOREIGN KEY(company_id) REFERENCES companies(id), 
                        FOREIGN KEY(client_id) REFERENCES clients(id))''')
 
-    cursor.execute('''CREATE TABLE IF NOT EXISTS events 
-                      (id INTEGER PRIMARY KEY, company_id INTEGER, project_id INTEGER, client_id INTEGER, event_type TEXT, 
+    cursor.execute(f'''CREATE TABLE IF NOT EXISTS events 
+                      (id {pk}, company_id INTEGER, project_id INTEGER, client_id INTEGER, event_type TEXT, 
                        start_date TEXT, end_date TEXT, responsible_user TEXT, 
                        description TEXT, status TEXT DEFAULT 'planned',
                        result TEXT, completion_desc TEXT, rating INTEGER)''')
 
-    cursor.execute('''CREATE TABLE IF NOT EXISTS projects 
-                      (id INTEGER PRIMARY KEY, name TEXT, project_type TEXT, status TEXT, 
+    cursor.execute(f'''CREATE TABLE IF NOT EXISTS projects 
+                      (id {pk}, name TEXT, project_type TEXT, status TEXT, 
                        end_date TEXT, area TEXT, address TEXT, budget TEXT, cp_amount TEXT,
                        region TEXT, currency TEXT DEFAULT 'RUB')''')
 
-    cursor.execute('''CREATE TABLE IF NOT EXISTS project_companies 
-                      (id INTEGER PRIMARY KEY, project_id INTEGER, company_id INTEGER,
+    cursor.execute(f'''CREATE TABLE IF NOT EXISTS project_companies 
+                      (id {pk}, project_id INTEGER, company_id INTEGER,
                        FOREIGN KEY(project_id) REFERENCES projects(id),
                        FOREIGN KEY(company_id) REFERENCES companies(id),
                        UNIQUE(project_id, company_id))''')
 
-    cursor.execute('''CREATE TABLE IF NOT EXISTS report_settings 
-                      (id INTEGER PRIMARY KEY, recipient_ids TEXT, frequency TEXT, 
+    cursor.execute(f'''CREATE TABLE IF NOT EXISTS report_settings 
+                      (id {pk}, recipient_ids TEXT, frequency TEXT, 
                        day_value INTEGER, time_value TEXT)''')
 
     conn.commit()
@@ -203,9 +206,17 @@ def init_db():
 
 
 def _add_column_if_missing(cursor, table, column, col_def):
-    cursor.execute(f'PRAGMA table_info({table})')
-    if column not in [row[1] for row in cursor.fetchall()]:
-        cursor.execute(f'ALTER TABLE {table} ADD COLUMN {column} {col_def}')
+    if DB_TYPE == 'postgresql':
+        cursor.execute(
+            "SELECT column_name FROM information_schema.columns WHERE table_name = ? AND column_name = ?",
+            (table, column),
+        )
+        if not cursor.fetchone():
+            cursor.execute(f'ALTER TABLE {table} ADD COLUMN {column} {col_def}')
+    else:
+        cursor.execute(f'PRAGMA table_info({table})')
+        if column not in [row[1] for row in cursor.fetchall()]:
+            cursor.execute(f'ALTER TABLE {table} ADD COLUMN {column} {col_def}')
 
 
 def _migrate_schema(conn):
