@@ -39,8 +39,25 @@ def _is_local_dev_origin(origin):
     return parsed.scheme == 'http' and parsed.hostname in ('localhost', '127.0.0.1')
 
 
+def _is_github_pages_origin(origin):
+    from urllib.parse import urlparse
+    parsed = urlparse(origin or '')
+    host = (parsed.hostname or '').lower()
+    return parsed.scheme == 'https' and host.endswith('.github.io')
+
+
 def _origin_allowed(origin):
-    return origin in cors_origins or _is_local_dev_origin(origin)
+    if not origin:
+        return False
+    if origin in cors_origins or _is_local_dev_origin(origin):
+        return True
+    origin_lower = origin.lower()
+    if any(o.lower() == origin_lower for o in cors_origins):
+        return True
+    # GitHub Pages (прод): браузер шлёт origin в нижнем регистре
+    if os.environ.get('FRONTEND_ORIGIN') and _is_github_pages_origin(origin):
+        return True
+    return False
 
 
 def _cors_headers(response):
