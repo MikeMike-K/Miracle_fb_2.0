@@ -1,0 +1,7 @@
+venv/
+__pycache__/
+*.pyc
+.env
+database.db
+report_previews/daily_*.html
+.git/
