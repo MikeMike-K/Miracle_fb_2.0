@@ -1,6 +1,6 @@
 // Продакшен (GitHub Pages): укажите URL backend на Railway/Render.
 // Или задайте переменную репозитория API_BASE_URL — тогда config подставится при деплое.
-const PRODUCTION_API = 'https://YOUR-BACKEND.up.railway.app';
+const PRODUCTION_API = 'https://miraclefb20-production.up.railway.app';
 
 if (location.hostname.endsWith('github.io')) {
   window.API_BASE = window.API_BASE || PRODUCTION_API;
