@@ -1,3 +1,10 @@
-// Укажите здесь адрес backend API при деплое (например, на Railway/Render).
-// Если не задано, по умолчанию используется http://localhost:5000
-window.API_BASE = 'http://localhost:5000';
+// Продакшен (GitHub Pages): укажите URL backend на Railway/Render.
+// Или задайте переменную репозитория API_BASE_URL — тогда config подставится при деплое.
+const PRODUCTION_API = 'https://YOUR-BACKEND.up.railway.app';
+
+if (location.hostname.endsWith('github.io')) {
+  window.API_BASE = window.API_BASE || PRODUCTION_API;
+} else {
+  // Локально: backend на порту 5000 того же хоста, что и страница.
+  window.API_BASE = window.API_BASE || `${location.protocol}//${location.hostname}:5000`;
+}

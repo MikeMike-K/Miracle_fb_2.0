@@ -2,7 +2,7 @@
  * Единый клиент для общения с backend REST API.
  * Меняйте API_BASE, если backend развёрнут на другом адресе/порту.
  */
-const API_BASE = window.API_BASE || 'http://localhost:5000';
+const API_BASE = window.API_BASE || `${location.protocol}//${location.hostname}:5000`;
 
 async function apiRequest(path, { method = 'GET', body = null } = {}) {
   const opts = {

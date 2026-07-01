@@ -25,10 +25,10 @@
       <div class="col-md-6"><label class="form-label">Новый пароль</label><input class="form-control" name="password" placeholder="оставьте пустым, чтобы не менять"></div>
       <div class="col-md-6">
         <label class="form-label">Роль</label>
-        <select class="form-select" name="role">
+        <select class="form-select" name="role" id="roleSelect">
           <option value="manager">Менеджер</option>
-          <option value="local_admin">Локальный админ</option>
-          <option value="admin">Администратор</option>
+          <option value="local_admin" id="roleLocalAdmin">Локальный админ</option>
+          <option value="admin" id="roleAdmin">Администратор</option>
         </select>
       </div>
       <div class="col-12 mt-3"><button class="btn btn-primary">Сохранить</button></div>
@@ -45,9 +45,19 @@ const userId = params.get('id');
 
 (async () => {
   const me = await requireAuth(); if (!me) return;
-  renderNavbar('admin');
+  if (!['admin','local_admin'].includes(me.role)) { showToast('Нет прав', 'error'); window.location.href = 'main.html'; return; }
+  if (me.role !== 'admin') {
+    document.getElementById('roleLocalAdmin').remove();
+    document.getElementById('roleAdmin').remove();
+  }
+  renderNavbar('admin', me);
   try {
     const u = await api.adminGetUser(userId);
+    if (me.role !== 'admin' && ['admin', 'local_admin'].includes(u.role)) {
+      showToast('Только главный администратор может редактировать администраторов', 'error');
+      window.location.href = 'admin.html';
+      return;
+    }
     const f = document.getElementById('userForm');
     for (const key of ['last_name','first_name','patronymic','email','username','role']) {
       if (f[key]) f[key].value = u[key] || '';

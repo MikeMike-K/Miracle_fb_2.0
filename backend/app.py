@@ -16,6 +16,8 @@ app.secret_key = os.environ.get('SECRET_KEY', 'super_secret_key_change_me')
 
 # CORS для фронтенда (cookie-сессия). Без Flask-CORS — он давал 500 на всех запросах.
 _DEFAULT_LOCAL_ORIGINS = (
+    'http://localhost:8081',
+    'http://127.0.0.1:8081',
     'http://localhost:8080',
     'http://127.0.0.1:8080',
 )
@@ -28,9 +30,22 @@ if not cors_origins:
     cors_origins = set(_DEFAULT_LOCAL_ORIGINS)
 
 
+def _is_local_dev_origin(origin):
+    """Локально разрешаем любой порт на localhost / 127.0.0.1 (serve.py может взять 8081+)."""
+    if os.environ.get('DATABASE_URL') or not origin:
+        return False
+    from urllib.parse import urlparse
+    parsed = urlparse(origin)
+    return parsed.scheme == 'http' and parsed.hostname in ('localhost', '127.0.0.1')
+
+
+def _origin_allowed(origin):
+    return origin in cors_origins or _is_local_dev_origin(origin)
+
+
 def _cors_headers(response):
     origin = request.headers.get('Origin')
-    if origin and origin in cors_origins:
+    if origin and _origin_allowed(origin):
         response.headers['Access-Control-Allow-Origin'] = origin
         response.headers['Access-Control-Allow-Credentials'] = 'true'
         response.headers.add('Vary', 'Origin')
@@ -43,7 +58,7 @@ def cors_preflight():
         return None
     response = make_response('', 204)
     origin = request.headers.get('Origin')
-    if origin and origin in cors_origins:
+    if origin and _origin_allowed(origin):
         response.headers['Access-Control-Allow-Origin'] = origin
         response.headers['Access-Control-Allow-Credentials'] = 'true'
         response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
@@ -957,6 +972,30 @@ def admin_required(f):
     return wrap
 
 
+ADMIN_ROLES = frozenset({'admin', 'local_admin'})
+MANAGER_ROLE = 'manager'
+
+
+def _role_assignment_forbidden_response():
+    return jsonify({'error': 'Только главный администратор может назначать администраторов'}), 403
+
+
+def _can_assign_role(role):
+    """local_admin может создавать только менеджеров; admin — любую роль."""
+    if role in ADMIN_ROLES and session.get('role') != 'admin':
+        return False
+    if role not in ADMIN_ROLES | {MANAGER_ROLE}:
+        return False
+    return session.get('role') in ('admin', 'local_admin')
+
+
+def _can_manage_user(target_role):
+    """local_admin не может редактировать существующих администраторов."""
+    if session.get('role') == 'admin':
+        return True
+    return target_role not in ADMIN_ROLES
+
+
 def row_to_dict(cursor_description, row):
     if row is None:
         return None
@@ -1061,6 +1100,9 @@ def admin_create_user():
     new_password = (data.get('password') or '').strip()
     new_role = data.get('role', '')
 
+    if not _can_assign_role(new_role):
+        return _role_assignment_forbidden_response()
+
     if not first_name or not last_name or not email or not new_username or not new_password:
         return jsonify({'error': 'Заполните все обязательные поля!'}), 400
 
@@ -1078,6 +1120,7 @@ def admin_create_user():
 
 @app.route('/api/admin/users/<int:user_id>', methods=['GET'])
 @login_required
+@admin_required
 def get_user(user_id):
     conn = get_db_connection()
     user = conn.cursor().execute(
@@ -1092,6 +1135,7 @@ def get_user(user_id):
 
 @app.route('/api/admin/users/<int:user_id>', methods=['PUT'])
 @login_required
+@admin_required
 def edit_user(user_id):
     data = request.get_json(silent=True) or request.form
     first_name = (data.get('first_name') or '').strip()
@@ -1103,8 +1147,22 @@ def edit_user(user_id):
     new_password = (data.get('password') or '').strip()
 
     conn = get_db_connection()
-    if conn.cursor().execute("SELECT id FROM users WHERE username = ? AND id != ?",
-                             (new_username, user_id)).fetchone():
+    cursor = conn.cursor()
+    existing = cursor.execute("SELECT role FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not existing:
+        conn.close()
+        return jsonify({'error': 'Не найден'}), 404
+
+    current_role = existing[0]
+    if not _can_manage_user(current_role):
+        conn.close()
+        return _role_assignment_forbidden_response()
+    if not _can_assign_role(new_role):
+        conn.close()
+        return _role_assignment_forbidden_response()
+
+    if cursor.execute("SELECT id FROM users WHERE username = ? AND id != ?",
+                      (new_username, user_id)).fetchone():
         conn.close()
         return jsonify({'error': 'Логин занят!'}), 400
 

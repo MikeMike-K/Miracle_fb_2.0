@@ -39,10 +39,10 @@
       <div class="col-md-4"><input class="form-control" name="username" placeholder="Логин" required></div>
       <div class="col-md-4"><input class="form-control" name="password" placeholder="Пароль" required></div>
       <div class="col-md-4">
-        <select class="form-select" name="role">
+        <select class="form-select" name="role" id="createRoleSelect">
           <option value="manager">Менеджер</option>
-          <option value="local_admin">Локальный админ</option>
-          <option value="admin">Администратор</option>
+          <option value="local_admin" id="createRoleLocalAdmin">Локальный админ</option>
+          <option value="admin" id="createRoleAdmin">Администратор</option>
         </select>
       </div>
       <div class="col-md-2"><button class="btn btn-orange w-100">Создать</button></div>
@@ -76,14 +76,25 @@
 let allUsers = [];
 let refreshUsersSearch = () => {};
 
-function renderUsers(list) {
+function roleLabel(role) {
+  return { admin: 'Администратор', local_admin: 'Локальный админ', manager: 'Менеджер' }[role] || role;
+}
+
+function canEditUser(me, user) {
+  if (me.role === 'admin') return true;
+  return !['admin', 'local_admin'].includes(user.role);
+}
+
+function renderUsers(list, me) {
   document.getElementById('usersRows').innerHTML = list.length ? list.map(u => `
     <tr>
       <td>${escapeHtml(u.username)}</td>
       <td>${escapeHtml(u.first_name)} ${escapeHtml(u.last_name)}</td>
-      <td>${escapeHtml(u.role)}</td>
+      <td>${escapeHtml(roleLabel(u.role))}</td>
       <td>${escapeHtml(u.email||'')}</td>
-      <td><a class="btn btn-sm btn-outline-secondary" href="admin_edit_user.html?id=${u.id}">Изменить</a></td>
+      <td>${canEditUser(me, u)
+        ? `<a class="btn btn-sm btn-outline-secondary" href="admin_edit_user.html?id=${u.id}">Изменить</a>`
+        : '<span class="text-muted small">только admin</span>'}</td>
     </tr>`).join('') : `<tr><td colspan="5" class="text-center text-muted py-4">${allUsers.length ? 'Ничего не найдено' : 'Нет пользователей'}</td></tr>`;
 }
 
@@ -95,12 +106,16 @@ async function loadUsers() {
 (async () => {
   const me = await requireAuth(); if (!me) return;
   if (!['admin','local_admin'].includes(me.role)) { showToast('Нет прав', 'error'); window.location.href = 'main.html'; return; }
+  if (me.role !== 'admin') {
+    document.getElementById('createRoleLocalAdmin').remove();
+    document.getElementById('createRoleAdmin').remove();
+  }
   renderNavbar('admin', me);
   refreshUsersSearch = setupListSearch({
     inputId: 'listSearch',
     countId: 'listSearchCount',
     getItems: () => allUsers,
-    render: renderUsers,
+    render: (list) => renderUsers(list, me),
     searchText: (u) => [u.username, u.first_name, u.last_name, u.patronymic, u.role, u.email].join(' '),
   });
   try { await loadUsers(); } catch (e) { showToast(e.message, 'error'); }

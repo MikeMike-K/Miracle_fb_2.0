@@ -51,7 +51,10 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     await api.login(fd.get('username'), fd.get('password'));
     window.location.href = 'main.html';
   } catch (err) {
-    errorBox.textContent = err.message;
+    const msg = err.message === 'Failed to fetch'
+      ? 'Не удалось связаться с backend. Запущен ли python app.py в папке backend?'
+      : err.message;
+    errorBox.textContent = msg;
     errorBox.classList.remove('d-none');
   }
 });
