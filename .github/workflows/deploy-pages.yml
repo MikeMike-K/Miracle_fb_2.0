@@ -24,12 +24,15 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Inject backend API URL
-        if: vars.API_BASE_URL != ''
+        env:
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
         run: |
-          printf '%s\n' \
-            "// Auto-generated at deploy (GitHub variable API_BASE_URL)" \
-            "window.API_BASE = '${{ vars.API_BASE_URL }}';" \
-            > frontend/js/config.js
+          if [ -n "$API_BASE_URL" ] && ! echo "$API_BASE_URL" | grep -q 'YOUR-BACKEND'; then
+            printf '%s\n' \
+              "// Auto-generated at deploy (GitHub variable API_BASE_URL)" \
+              "window.API_BASE = '$API_BASE_URL';" \
+              > frontend/js/config.js
+          fi
 
       - uses: actions/configure-pages@v5
 
